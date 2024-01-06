@@ -1,5 +1,9 @@
 import logging
 
+from datetime import datetime
+
+from spaceone.core.utils import generate_id
+
 from conf import DEFAULT_LOGGER
 from lib import MongoCustomClient
 from lib.util import print_log
@@ -50,23 +54,23 @@ def secret_secret_migration(
 
             workspace_id = service_account_info.get("workspace_id")
             project_id = service_account_info.get("project_id")
-
-            if not workspace_id:
-                _LOGGER.error(
-                    f"Secret service_account({secret_info['service_account_id']}) does not exists in IDENTITY.sa"
-                )
             
-            set_param = {
-                "$set": {
-                    "secret_schema_id": schema_id,
-                    "secret_id": secret_info["secret_id"],
-                }
-            }
-            mongo_client.update_many(
-                "IDENTITY", "service_account",
-                {"service_account_id": secret_info.get("service_account_id")},
-                set_param,
+        if not workspace_id:
+            _LOGGER.error(
+                f"Secret service_account({secret_info['service_account_id']}) does not exists in IDENTITY.sa"
             )
+        
+        set_param = {
+            "$set": {
+                "secret_schema_id": schema_id,
+                "secret_id": secret_info["secret_id"],
+            }
+        }
+        mongo_client.update_many(
+            "IDENTITY", "service_account",
+            {"service_account_id": secret_info.get("service_account_id")},
+            set_param,
+        )
 
         set_params = {
             "$set": {
@@ -125,9 +129,49 @@ def secret_trusted_secret_migration(mongo_client: MongoCustomClient, domain_id_p
                 {"trusted_account_id": trusted_secret_info.get("trusted_secret_id")},
                 set_param,
             )
+        
+        if trusted_secret_info.get("service_account_id"):
+            service_account_info = mongo_client.find_one(
+                "IDENTITY", "service_account"
+                , {"service_account_id": trusted_secret_info.get("service_account_id")}, {}
+            )
+
+            new_trusted_account_id = generate_id("ta")
+            trusted_account_create = {
+                "trusted_account_id": new_trusted_account_id,
+                "name": service_account_info.get("name"),
+                "data": service_account_info.get("data"),
+                "provider": service_account_info.get("provider"),
+                "tags": service_account_info.get("tags"),
+                "secret_schema_id": schema_id,
+                "trusted_secret_id": trusted_secret_info.get("trusted_secret_id"),
+                "resource_group": "DOMAIN",
+                "workspace_id": "*",
+                "domain_id": service_account_info["domain_id"],
+                "created_at": datetime.utcnow(),
+            }
+
+            mongo_client.insert_one(
+                "IDENTITY", "trusted_account", trusted_account_create
+            )
+
+            mongo_client.update_one(
+                "SECRET", "trusted_secret"
+                , {"_id": trusted_secret_info["_id"]}
+                , {
+                    "$set": {"trusted_account_id": new_trusted_account_id},
+                    "$unset": {"service_account_id": 1}
+                }
+            )
+
+            mongo_client.delete_many(
+                "IDENTITY", "service_account"
+                , {"service_account_id": service_account_info["service_account_id"]}
+            )
 
 
 def _get_schema_to_schema_id(schema):
+    
     schema_id = None
     if schema == "azure_subscription_id":
         schema_id = "azure-secret-subscription-id"

@@ -320,7 +320,7 @@ def identity_service_account_and_trusted_account_creating(
             "data": service_account_info.get("data"),
             "provider": service_account_info.get("provider"),
             "tags": service_account_info.get("tags"),
-            "schema_id": schema_id,
+            "secret_schema_id": schema_id,
             "trusted_secret_id": trusted_secret.get("trusted_secret_id"),
             "resource_group": "DOMAIN",
             "workspace_id": "*",
