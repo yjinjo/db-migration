@@ -504,10 +504,9 @@ def identity_user_refactoring(mongo_client, domain_id_param):
         "IDENTITY", "user", {"domain_id": domain_id_param}, {}
     )
 
-    role_type = "USER"
-    role_id = None
-
     for user_info in user_infos:
+        role_type = "USER"
+        role_id = None
         role_binding_info = mongo_client.find_one(
             "IDENTITY",
             "role_binding",
