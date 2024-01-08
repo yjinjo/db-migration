@@ -320,7 +320,7 @@ def identity_service_account_and_trusted_account_creating(
             "data": service_account_info.get("data"),
             "provider": service_account_info.get("provider"),
             "tags": service_account_info.get("tags"),
-            "schema_id": schema_id,
+            "secret_schema_id": schema_id,
             "trusted_secret_id": trusted_secret.get("trusted_secret_id"),
             "resource_group": "DOMAIN",
             "workspace_id": "*",
@@ -504,10 +504,9 @@ def identity_user_refactoring(mongo_client, domain_id_param):
         "IDENTITY", "user", {"domain_id": domain_id_param}, {}
     )
 
-    role_type = "USER"
-    role_id = None
-
     for user_info in user_infos:
+        role_type = "USER"
+        role_id = None
         role_binding_info = mongo_client.find_one(
             "IDENTITY",
             "role_binding",
